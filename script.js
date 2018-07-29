@@ -1,111 +1,61 @@
 
-var margin = {top: 20, right: 10, bottom: 100, left:50},
-    width = 700 - margin.right - margin.left,
-    height = 500 - margin.top - margin.bottom;
+var width = 1430, height = 500;
+
+    var svg = d3.select("#chart")
+                .append("svg")
+                .attr("height",height)
+                .attr("width",width)
+                .append("g")
+                .attr("transform", "translate(0,0)");
 
 
-var svg = d3.select("body")
-    .append("svg")
-      .attr ({
-        "width": width + margin.right + margin.left,
-        "height": height + margin.top + margin.bottom
-      })
-    .append("g")
-      .attr("transform","translate(" + margin.left + "," + margin.right + ")");
+    d3.queue()
+        .defer(d3.csv,"Data.csv")
+        .await(ready);
 
+    function ready (error, datapoints) {
 
-// define x and y scales
-var xScale = d3.scale.ordinal()
-    .rangeRoundBands([0,width], 0.2, 0.2);
-
-var yScale = d3.scale.linear()
-    .range([height, 0]);
-
-// define x axis and y axis
-var xAxis = d3.svg.axis()
-    .scale(xScale)
-    .orient("bottom");
-
-var yAxis = d3.svg.axis()
-    .scale(yScale)
-    .orient("left");
-
-
-d3.csv("Data.csv", function(error,data) {
-  if(error) console.log("Error: data not loaded!");
-
- 
-  data.forEach(function(d) {
-    d.State = d.State;
-    d.Deaths = +d.Deaths; 
-    d.Year = +d.Year;      
-    console.log(d.Deaths);   // use console.log to confirm
+        datapoints.forEach(function(d) {
+            d.State = d.State;
+            d.Deaths = +d.Deaths; 
+            d.Year = +d.Year;      
+        //  console.log(d.Deaths); 
   });
 
+        var ct = d3.sum(datapoints.map(function(d){if (d.State == "Connecticut") return d.Deaths;}));
+        var md = d3.sum(datapoints.map(function(d){if (d.State == "Maryland") return d.Deaths;}));
+        var nj = d3.sum(datapoints.map(function(d){if (d.State == "New Jersey") return d.Deaths;}));
+        var ny = d3.sum(datapoints.map(function(d){if (d.State == "New York") return d.Deaths;}));
+        var va = d3.sum(datapoints.map(function(d){if (d.State == "Virginia") return d.Deaths;}));
 
-  // Specify the domains of the x and y scales
-  xScale.domain(data.map(function(d) { if (d.State=="Connecticut") return d.Year; }) );
-  yScale.domain([0, d3.max(data, function(d) { if (d.State=="Connecticut") return d.Deaths; } ) ]);
+        var mort = [ct,md,nj,ny,va];
+        //console.log(mort);
+        var st = ["Connecticut","Maryland","New Jersey", "New York", "Virginia"];
 
-  svg.selectAll('rect')
-    .data(data)
-    .enter()
-    .append('rect')
-    .attr("height", 0)
-    .attr("y", height)
-    .transition().duration(3000)
-    .delay( function(d,i) { return i * 200; })
-    // attributes can be also combined under one .attr
-    .attr({
-      "x": function(d) { return xScale(d.Year); },
-      "y": function(d) { return yScale(d.Deaths); },
-      "width": xScale.rangeBand(),
-      "height": function(d) { if (d.State=="Connecticut") return  height - yScale(d.Deaths); }
-    })
-    .style("fill", function(d,i) { return 'rgb(20, 20, ' + ((i * 30) + 100) + ')'});
+        var circles = svg.selectAll("circle")
+                         .data(mort)
+                         .enter().append("circle")
+                         .attr("class", "Deaths")
+                         .attr("r", function(d) {return d/200;})
+                         .attr("fill","steelblue")
+                         .attr("cx", function(d,i){return 200*i+50;})
+                         .attr("cy", function(d){return 250;});
 
 
-        svg.selectAll('text')
-            .data(data)
-            .enter()
-            .append('text')
+        //console.log(st[1])        
+
+        var txtCt = svg.append("text").attr("x",20).attr("y",300).text(st[0]);
+        var txtMd = svg.append("text").attr("x",222).attr("y",320).text(st[1]);
+        var txtNj = svg.append("text").attr("x",420).attr("y",330).text(st[2]);
+        var txtNy = svg.append("text").attr("x",620).attr("y",360).text(st[3]);
+        var txtVa = svg.append("text").attr("x",828).attr("y",310).text(st[4]);
 
 
+        var dthCt = svg.append("text").attr("x",10).attr("y",210).text("Total deahths: "+mort[0]);
+        var dthMd = svg.append("text").attr("x",200).attr("y",190).text("Total deahths: "+mort[1]);
+        var dthNj = svg.append("text").attr("x",400).attr("y",180).text("Total deahths: "+mort[2]);
+        var dthNy = svg.append("text").attr("x",590).attr("y",150).text("Total deahths: "+mort[3]);
+        var dthVa = svg.append("text").attr("x",800).attr("y",205).text("Total deahths: "+mort[4]);
 
-            .text(function(d){
-                return d.Deaths;
-            })
-            .attr({
-                "x": function(d){ return xScale(d.Year) +  xScale.rangeBand()/2; },
-                "y": function(d){ return yScale(d.Deaths)+ 12; },
-                "font-family": 'sans-serif',
-                "font-size": '13px',
-                "font-weight": 'bold',
-                "fill": 'white',
-                "text-anchor": 'middle'
-            });
-
-    // Draw xAxis and position the label
-    svg.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + height + ")")
-        .call(xAxis)
-        .selectAll("text")
-        .attr("dx", "-.8em")
-        .attr("dy", ".25em")
-        .attr("transform", "rotate(-60)" )
-        .style("text-anchor", "end")
-        .attr("font-size", "10px");
-
-
-    // Draw yAxis and postion the label
-    svg.append("g")
-        .attr("class", "y axis")
-        .call(yAxis)
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("x", -height/2)
-        .attr("dy", "-3em")
-        .style("text-anchor", "middle")
-        .text("Number of Deaths");
-});
+    }
+        
